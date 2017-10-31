@@ -4,7 +4,7 @@
 - 실시간 데이터베이스
 - 클라우드 메시징
 
-## 로그인, 인증처리(Firebase Authentication)
+## (1) 로그인, 인증처리(Firebase Authentication)
 
 ### onCreate
 ```java
@@ -158,7 +158,7 @@ private boolean isSamePasswordCheck(String pw1, String pw2) {
 }
 ```
 
-## 저장소(Firebase Storage)
+## (2) 저장소(Firebase Storage)
 
 
 ```java
@@ -215,7 +215,7 @@ public void upload(Uri file) {
 }
 ```
 
-## 클라우드 메시징
+## (3) 클라우드 메시징
 
 ### 토근 값 가져오기 & 데이터베이스에 저장
 
