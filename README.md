@@ -340,35 +340,6 @@ var server = http.createServer((request, response)=>{
 });
 ```
 
-
-### cf) 파이어베이스 개인 서버 작성(Function 사용)
-
-- 1. npm install -g firebase-tools // <- -g로 설치하지 않으면 인식하지 못함
-- 2. firebase login
-- 3. firebase init -> firebase init functions -> 프로젝트 선택
-- 4. function/index.js 파일에 addMessage 설정(반드시 function 아래 index.js 파일이어야 함)
-- 5. firebase deploy --only functions:addMessage
-- 6. Firebase Functions에 가서 https://us-central1-fir-basic2-caa20.cloudfunctions.net/addMessage 주소값 찾은 후 ?text=hello 주소로 요청
-- 7. Database에 Message 노드 생성 확인
-- 8. function/index.js 파일에 fcmServerUrl, serverKey, sendNotification()함수 설정
-
-```javaScript
-const fun = require('firebase-functions'); // <- firebase-functions 's'붙어야 함
-const admin = require('firebase-admin');
-admin.initializeApp(fun.config().firebase);
-
-exports.addMessage = fun.https.onRequest((req, res)=>{
-    // http 요청에서 ? 다음에 있는 변수 중에 text 변수 값을 가져온다
-    var text = req.query.text;
-    // 파이어베이스 db의 message 레퍼런스에 그 값을 넣는다
-    admin.database.ref('/message')
-        .push({msg:text})    // 받아온 값을 msg로 넣어준다
-        .then(snapshot=>{   // 받아온 후
-            res.redirect(30, snapshot.ref)
-        });
-});
-```
-
 ### 3.4 전달된 메시지 처리 - 앱이 떠 있는 상태에서 메시지가 전달될 경우
 
 - onMessageReceived() 호출
@@ -432,7 +403,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 ```
 
 
-### 3.5 토큰 관리 - 앱이 떠 있는 상태에서 메시지가 전달될 경우토근이 만료되어 갱신해야 하는 경우
+### 3.5 토큰 관리 - 토근이 만료되어 갱신해야 하는 경우
 
 - onTokenRefresh()가 호출되고, 여기서 기존에 데이터베이스에 저장해서 사용하던 토큰을 갱신해 줄 수 있다
 
@@ -456,4 +427,45 @@ public class MyFirebaseInstanceIDService extends FirebaseInstanceIdService {
 
     }
 }
+```
+
+### cf) 파이어베이스 개인 서버 작성(Function 사용)
+
+- 1. npm install -g firebase-tools // <- -g로 설치하지 않으면 인식하지 못함
+- 2. firebase login
+- 3. firebase init -> firebase init functions -> 프로젝트 선택
+- 4. function/index.js 파일에 addMessage 설정(반드시 function 아래 index.js 파일이어야 함)
+- 5. firebase deploy --only functions:addMessage
+- 6. Firebase Functions에 가서 https://us-central1-fir-basic2-caa20.cloudfunctions.net/addMessage 주소값 찾은 후 ?text=hello 주소로 요청
+- 7. Database에 Message 노드 생성 확인
+- 8. function/index.js 파일에 fcmServerUrl, serverKey, sendNotification()함수 설정
+- 9. https://us-central1-fir-basic2-caa20.cloudfunctions.net/sendNotification 주소로 요청
+
+
+```javaScript
+const fun = require('firebase-functions'); // <- firebase-functions 's'붙어야 함
+const admin = require('firebase-admin');
+admin.initializeApp(fun.config().firebase);
+
+// 파이어베이스 서버에 요청
+exports.sendNotification = fun.https.onRequest((req, res)=>{
+
+    // json 데이터로 post 값을 수신
+    var dataObj = req.body;
+    var msg = {
+        notification : {
+            title : "노티바에 나타나는 타이틀",
+            body : dataObj.msg
+        }
+    };
+    var tokens = [];
+    tokens.push(dataObj.to);
+    admin.messaging().sendToDevice(tokens, msg)
+    .then(function(response){
+        res.status(200).send(response);
+    })
+    .catch(function(error){
+        res.status(501).send(error);
+    });
+});
 ```
