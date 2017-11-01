@@ -1,4 +1,4 @@
-# FireBase AuthenTication, Storage, FCM, 보안 규칙
+# FireBase Storage, Authentication, FCM, 보안규칙
 - 파이어베이스 로그인 인증처리
 - 이미지 파일 업로드
 - 실시간 데이터베이스
@@ -225,13 +225,13 @@ public void upload(Uri file) {
 
     - 파이어베이스는 기기에서 직접 서버에 접근해서 전달하지 않도록 권고하고 있다. 토큰값을 탈취당할 수 있다는 이유에서이다. 따라서 개인 서버를 만들고 파이어베이스의 서버키를 가진 개인 서버만이 접근할 수 있도록 한다
 
-![]()
+![](https://github.com/qskeksq/FireBase2/blob/master/pic/FCM2.png)
 
 ### 3.1 가입할 때 유저 정보와 함께 토큰 값 데이터베이스에 저장
     - 토큰은 (파이어베이스) 서버에서 기기를 식별하기 위한 정보이다
     - 데이터베이스에 저장해 두고 토큰을 통해 통신할 수 있다. 
 
-![]()
+![](https://github.com/qskeksq/FireBase2/blob/master/pic/FCM.png)
 
 ```java
 String refreshedToken = FirebaseInstanceId.getInstance().getToken();
