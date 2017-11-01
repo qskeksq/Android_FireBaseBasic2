@@ -7,6 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -24,8 +25,17 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
 public class StorageActivity extends AppCompatActivity implements UserAdapter.Callback {
 
@@ -62,6 +72,54 @@ public class StorageActivity extends AppCompatActivity implements UserAdapter.Ca
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("audio/*"); // 갤러리 image/*, 동영상 video/*
         startActivityForResult(intent.createChooser(intent, "Select App"), 999);
+    }
+
+    public void send(View view){
+        String token = txtToken.getText().toString();
+        String msg = editId.getText().toString();
+
+        if(token == null || "".equals(token)){
+            Toast.makeText(this, "받는 사람을 선택하세요", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if(msg == null || "".equals(msg)){
+            Toast.makeText(this, "메시지를 입력하세요 선택하세요", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String json = "{\"to\" :\""+token+"\", \"msg\" :\""+msg+"\"}";
+        Log.e("제이슨", json);
+
+        // 레트로핏 생성
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://192.168.1.85:8090/")
+                .build();
+        // 인터페이스와 결합
+        IRemote remote = retrofit.create(IRemote.class);
+        // 서비스로 서버 연결 준비
+        RequestBody requestBody = RequestBody.create(MediaType.parse("plain/text"), json);
+        Call<ResponseBody> call = remote.sendNotification(requestBody);
+        // 연결 후 데이터 비동기 처리
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if(response.isSuccessful()){
+                    String result = null;
+                    try {
+                        result = response.body().string();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Toast.makeText(StorageActivity.this, result, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("연결 실패", t.getMessage().toString());
+
+            }
+        });
     }
 
     @Override
@@ -119,11 +177,7 @@ public class StorageActivity extends AppCompatActivity implements UserAdapter.Ca
             public void onDataChange(DataSnapshot dataSnapshot) {
                 List<User> data = new ArrayList<User>();
                 for(DataSnapshot snapshot : dataSnapshot.getChildren()){
-                    User user = new User();
-                    String token = snapshot.getValue(String.class);
-                    String id = snapshot.getKey();
-                    user.token = token;
-                    user.id = id;
+                    User user = snapshot.getValue(User.class);
                     data.add(user);
                 }
                 adapter.setDataAndRefresh(data);

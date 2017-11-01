@@ -76,9 +76,13 @@ public void signUp(View view) {
                     });
                     // 2. 생성 완료된 유저를 데이터베이스에 저장한다
                     // sendEmailVerification()의 addOnCompleteListener()로 들어가면 데이터베이스에 입력이 안 됨
-                    String refreshedToken = FirebaseInstanceId.getInstance().getToken();
+                    // 무조건 기본 생성자로 호출해줘야 함
+                    User member = new User();
+                    member.id = user.getUid();
+                    member.token = refreshedToken;
+                    member.email = user.getEmail();
                     Log.e("토큰", refreshedToken);
-                    userRef.child(user.getUid()).setValue(refreshedToken);
+                    userRef.child(user.getUid()).setValue(member);
                 }
             }
         });
@@ -217,18 +221,155 @@ public void upload(Uri file) {
 
 ## (3) 클라우드 메시징
 
-### 토근 값 가져오기 & 데이터베이스에 저장
+    - 직접 기기에서 기기로 메시지를 전달할 수 없고 현재기기에서 목적지가 되는 기기의 토큰 값(기기의 식별자)를 서버에 보내주면 서버가 그 토큰으로 원하는 기기에 메시지를 대신 전달해주는 과정을 거친다
 
-- 데이터베이스에 저장해 두고 토큰을 통해 통신할 수 있다
+    - 파이어베이스는 기기에서 직접 서버에 접근해서 전달하지 않도록 권고하고 있다. 토큰값을 탈취당할 수 있다는 이유에서이다. 따라서 개인 서버를 만들고 파이어베이스의 서버키를 가진 개인 서버만이 접근할 수 있도록 한다
+
+![]()
+
+### 3.1 가입할 때 유저 정보와 함께 토큰 값 데이터베이스에 저장
+    - 토큰은 (파이어베이스) 서버에서 기기를 식별하기 위한 정보이다
+    - 데이터베이스에 저장해 두고 토큰을 통해 통신할 수 있다. 
+
+![]()
 
 ```java
-// 토큰 값 받아오기
 String refreshedToken = FirebaseInstanceId.getInstance().getToken();
-// 데이터베이스에 저장
-userRef.child(user.getUid()).setValue(refreshedToken);
 ```
 
-### 앱이 떠 있는 상태에서 메시지가 전달될 경우
+### 3.2 클라이언트에서 개인서버에 메시지 전달 요청
+    - 1. 목적지 기기의 토큰 2. 전달하려는 메시지를 jsonString에 담아서 서버에 전달한다
+
+```java
+// 레트로핏 생성
+Retrofit retrofit = new Retrofit.Builder()
+        .baseUrl("http://192.168.1.85:8090/")
+        .build();
+// 인터페이스와 결합
+IRemote remote = retrofit.create(IRemote.class);
+// 서비스로 서버 연결 준비
+RequestBody requestBody = RequestBody.create(MediaType.parse("plain/text"), json);
+Call<ResponseBody> call = remote.sendNotification(requestBody);
+// 연결 후 데이터 비동기 처리
+call.enqueue(new Callback<ResponseBody>() {
+    @Override
+    public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+        if(response.isSuccessful()){
+            String result = null;
+            try {
+                result = response.body().string();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Toast.makeText(StorageActivity.this, result, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onFailure(Call<ResponseBody> call, Throwable t) {
+        Log.e("연결 실패", t.getMessage().toString());
+
+    }
+});
+```
+
+### 3.3 서버에서 토큰값과메시지를 받아서 msg 객체 생성, 파이어베이스 서버에 전달, 응답처리
+
+    - 개인서버가 가진 정보
+        - 파이어베이스 서버 접근 권한키
+        - 파이어베이스 서버 주소
+        - 전달할 메시지 객체
+
+
+```javaScript
+// request 모듈
+var httpUrlConnection = require('request');
+// fcm 설정 : 구글에서 미리 설정해 둔 서버
+const fcmServerUrl = 'https://fcm.googleapis.com/fcm/send'; 
+// 서버키
+const serverKey = 'AAAAo5pdjEc:APA91bHZcE4vDXO1qSBhknzFGuKEVz0grnuhWF0n_o9fNUcrxr_EQM1QAdRvAfHsiGbIjPjH9fdsPoLqvBrnWDqmJGL2SJ3nN68hpeiTYth0o75KmDkRt5hiLO3ipWMQD9XBkTuMfkeX';
+// 메시지
+var msg = {
+    to : '',
+    notification : {
+        title : '노티바 제목',
+        body : '글자'
+    }
+}
+```
+
+```javaScript
+var server = http.createServer((request, response)=>{
+    // 1. 토큰값, 메시지를 받는다
+    if(request.url == '/sendNotification'){
+        var postData = '';
+        request.on('data', (data)=>{
+            postData += data;
+        });
+        // 2. 토큰값과 메시지를 꺼내서 메시지 객체로 완성
+        request.on('end', ()=>{
+            var postObj = JSON.parse(postData);
+            msg.to = postObj.to;
+            msg.notification.body = postObj.msg;
+            // 3. reqeust 모듈을 통해 파이어베이스 서버에 연결
+            httpUrlConnection(
+                // http 메시지 객체
+                {
+                    url : fcmServerUrl,                     // 파이어베이스 서버 주소
+                    method : 'POST',                        // 전달 방식
+                    headers : {                             // 헤더(필수)
+                        "Authorization" : "key="+serverKey, // 권한 - 서버 접근 권한
+                        'Content-Type' : 'application/json' // 데이터 타입
+                    },
+                    body : JSON.stringify(msg)              // 메시지 객체를 JSON으로 담아서 전달
+                },
+                // 4. 응답
+                (err, answer, body)=>{
+                    var result = {
+                        code : answer.statusCode,
+                        msg : body
+                    };
+                    response.writeHead(200, {'Content-Type':'plain/text'});
+                    response.end(JSON.stringify(result));
+                }
+            );
+        });
+    } else {
+        response.end('404 page not found');
+    }
+});
+```
+
+
+### cf) 파이어베이스 개인 서버 작성(Function 사용)
+
+- 1. npm install -g firebase-tools // <- -g로 설치하지 않으면 인식하지 못함
+- 2. firebase login
+- 3. firebase init -> firebase init functions -> 프로젝트 선택
+- 4. function/index.js 파일에 addMessage 설정(반드시 function 아래 index.js 파일이어야 함)
+- 5. firebase deploy --only functions:addMessage
+- 6. Firebase Functions에 가서 https://us-central1-fir-basic2-caa20.cloudfunctions.net/addMessage 주소값 찾은 후 ?text=hello 주소로 요청
+- 7. Database에 Message 노드 생성 확인
+- 8. function/index.js 파일에 fcmServerUrl, serverKey, sendNotification()함수 설정
+
+```javaScript
+const fun = require('firebase-functions'); // <- firebase-functions 's'붙어야 함
+const admin = require('firebase-admin');
+admin.initializeApp(fun.config().firebase);
+
+exports.addMessage = fun.https.onRequest((req, res)=>{
+    // http 요청에서 ? 다음에 있는 변수 중에 text 변수 값을 가져온다
+    var text = req.query.text;
+    // 파이어베이스 db의 message 레퍼런스에 그 값을 넣는다
+    admin.database.ref('/message')
+        .push({msg:text})    // 받아온 값을 msg로 넣어준다
+        .then(snapshot=>{   // 받아온 후
+            res.redirect(30, snapshot.ref)
+        });
+});
+```
+
+### 3.4 전달된 메시지 처리 - 앱이 떠 있는 상태에서 메시지가 전달될 경우
 
 - onMessageReceived() 호출
 - 앱이 떠 있지 않은 상태에서 메시지가 전달되면 Noti로 전달됨
@@ -291,7 +432,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 ```
 
 
-### 토근이 만료되어 갱신해야 하는 경우
+### 3.5 토큰 관리 - 앱이 떠 있는 상태에서 메시지가 전달될 경우토근이 만료되어 갱신해야 하는 경우
 
 - onTokenRefresh()가 호출되고, 여기서 기존에 데이터베이스에 저장해서 사용하던 토큰을 갱신해 줄 수 있다
 
@@ -316,4 +457,3 @@ public class MyFirebaseInstanceIDService extends FirebaseInstanceIdService {
     }
 }
 ```
-

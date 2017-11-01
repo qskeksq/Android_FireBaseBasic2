@@ -200,8 +200,13 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             });
                             String refreshedToken = FirebaseInstanceId.getInstance().getToken();
+                            // 무조건 기본 생성자 써야 한다.
+                            User member = new User();
+                            member.id = user.getUid();
+                            member.token = refreshedToken;
+                            member.email = user.getEmail();
                             Log.e("토큰", refreshedToken);
-                            userRef.child(user.getUid()).setValue(refreshedToken);
+                            userRef.child(user.getUid()).setValue(member);
                         }
                     }
                 });
