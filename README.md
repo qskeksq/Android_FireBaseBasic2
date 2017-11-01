@@ -238,7 +238,7 @@ String refreshedToken = FirebaseInstanceId.getInstance().getToken();
 ```
 
 ### 3.2 클라이언트에서 개인서버에 메시지 전달 요청
-    - 1. 목적지 기기의 토큰 2. 전달하려는 메시지를 jsonString에 담아서 서버에 전달한다
+- 1. 목적지 기기의 토큰 2. 전달하려는 메시지를 jsonString에 담아서 서버에 전달한다
 
 ```java
 // 레트로핏 생성
@@ -275,10 +275,10 @@ call.enqueue(new Callback<ResponseBody>() {
 
 ### 3.3 서버에서 토큰값과메시지를 받아서 msg 객체 생성, 파이어베이스 서버에 전달, 응답처리
 
-    - 개인서버가 가진 정보
-        - 파이어베이스 서버 접근 권한키
-        - 파이어베이스 서버 주소
-        - 전달할 메시지 객체
+- 개인서버가 가진 정보
+    - 파이어베이스 서버 접근 권한키
+    - 파이어베이스 서버 주소
+    - 전달할 메시지 객체
 
 
 ```javaScript
@@ -287,7 +287,7 @@ var httpUrlConnection = require('request');
 // fcm 설정 : 구글에서 미리 설정해 둔 서버
 const fcmServerUrl = 'https://fcm.googleapis.com/fcm/send'; 
 // 서버키
-const serverKey = 'AAAAo5pdjEc:APA91bHZcE4vDXO1qSBhknzFGuKEVz0grnuhWF0n_o9fNUcrxr_EQM1QAdRvAfHsiGbIjPjH9fdsPoLqvBrnWDqmJGL2SJ3nN68hpeiTYth0o75KmDkRt5hiLO3ipWMQD9XBkTuMfkeX';
+const serverKey = 'AAAAo5pdjEc:nuhWF0n_o9fNUcrxr_EQM1QAdRvAfHsiGbIjPjH9fdsPoLqvBrnWDqmJGL2SJ3nN68hpeiTYth0o75KmDkRt5hiLO3ipWMQD9XBkTuMfkeX';
 // 메시지
 var msg = {
     to : '',
